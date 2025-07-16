@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Chat Rooms</title>
+</head>
+<body class="bg-gray-100 text-gray-800 p-6">
+  <div class="max-w-2xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6">🗨️ Chat Rooms</h1>
+
+    <!-- Create Room -->
+    <div class="mb-4 p-4 border rounded-lg bg-white shadow">
+      <h2 class="text-xl font-semibold mb-2">Create Room</h2>
+      <button
+        hx-post="/rooms/create"
+        hx-trigger="click"
+        hx-swap="none"
+        hx-on::after-request="handleCreateRoom(event)"
+        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+        ➕ Create Room
+      </button>
+      <div id="roomStatus" class="mt-2 text-green-700 font-medium"></div>
+    </div>
+
+    <!-- Join Room -->
+    <div class="mb-4 p-4 border rounded-lg bg-white shadow">
+      <h2 class="text-xl font-semibold mb-2">Join Room</h2>
+      <input id="roomIdInput" type="text" placeholder="Enter Room ID"
+        class="border px-2 py-1 rounded w-full mb-2" />
+      <button
+        onclick="joinRoom()"
+        class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+        🔗 Join Room
+      </button>
+    </div>
+
+    <!-- Chat Area -->
+    <div id="chatArea" class="hidden p-4 border rounded-lg bg-white shadow">
+      <h2 class="text-xl font-semibold mb-2">Room: <span id="currentRoom"></span></h2>
+      <div id="messages" class="h-64 overflow-y-auto border p-2 mb-2 rounded bg-gray-50"></div>
+      <div class="flex">
+        <input id="msgInput" type="text" placeholder="Type a message..."
+          class="border px-2 py-1 rounded flex-1 mr-2" />
+        <button
+          onclick="sendMsg()"
+          class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+          📤 Send
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let ws;
+    let currentRoom = '';
+
+    function handleCreateRoom(event) {
+      const xhr = event.detail.xhr;
+      const data = JSON.parse(xhr.responseText);
+      document.getElementById('roomStatus').textContent = `✅ Room created: ${data.id}`;
+      document.getElementById('roomIdInput').value = data.id;
+    }
+
+    function joinRoom() {
+      const roomId = document.getElementById('roomIdInput').value.trim();
+      if (!roomId) return alert("Enter a room ID");
+
+      // Close previous ws if any
+      if (ws) ws.close();
+
+      currentRoom = roomId;
+      document.getElementById('currentRoom').textContent = roomId;
+      document.getElementById('chatArea').classList.remove('hidden');
+
+      ws = new WebSocket(`ws://${location.host}/ws?roomId=${roomId}`);
+    
+      ws.onmessage = (e) => {
+       
+        const msgBox = document.getElementById('messages');
+        const p = document.createElement('p');
+        p.textContent = e.data;
+        msgBox.appendChild(p);
+        msgBox.scrollTop = msgBox.scrollHeight;
+      };
+      ws.onclose = () => console.log("WS closed");
+    }
+
+    function sendMsg() {
+       
+      const input = document.getElementById('msgInput');
+      const text = input.value.trim();
+        const msgBox = document.getElementById('messages');
+        const p = document.createElement('p');
+        p.textContent = text;
+        msgBox.appendChild(p);
+        msgBox.scrollTop = msgBox.scrollHeight;
+      if (text && ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(text);
+        input.value = '';
+      }
+    }
+  </script>
+</body>
+</html>
