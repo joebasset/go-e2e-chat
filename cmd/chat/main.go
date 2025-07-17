@@ -1,7 +1,12 @@
 package main
 
-import "github.com/joebasset/go-chat-e2e/internal/server"
+import (
+	"github.com/joebasset/go-chat-e2e/internal/chat"
+	"github.com/joebasset/go-chat-e2e/internal/server"
+)
 
 func main() {
-	server.Server()
+	hub := chat.NewHub()
+	go hub.Run()
+	server.StartServer(hub)
 }
