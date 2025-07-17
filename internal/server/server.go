@@ -1,11 +1,12 @@
 package server
 
 import (
+	"github.com/joebasset/go-chat-e2e/internal/chat"
 	"github.com/labstack/echo/v4"
 )
 
-func Server() {
+func StartServer(hub *chat.Hub) {
 	e := echo.New()
-	CreateRoutes(e)
+	createRoutes(e, hub)
 	e.Logger.Fatal(e.Start(":8080"))
 }

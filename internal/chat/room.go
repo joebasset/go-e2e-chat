@@ -1,33 +1,56 @@
 package chat
 
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
+
 type Room struct {
 	Id         string
-	Clients    []Client
-	Register   chan *Client
-	Unregister chan *Client
-	Broadcast  chan []byte
+	clients    map[string]*Client
+	register   chan *Client
+	unregister chan *Client
+	send       chan []byte
 }
 
-func (r *Room) Run() {
+func NewRoom() *Room {
+	return &Room{
+		Id:         uuid.NewString(),
+		register:   make(chan *Client),
+		unregister: make(chan *Client),
+		clients:    make(map[string]*Client),
+		send:       make(chan []byte),
+	}
+}
+
+func (r *Room) run() {
 	for {
 		select {
-		case client := <-r.Register:
-			r.Clients[client.Id] = client
+		case client := <-r.register:
 
-		case client := <-r.Unregister:
-			delete(r.Clients, client.Id)
-			close(client.Send)
+			r.clients[client.id] = client
 
-		case message := <-r.Broadcast:
-			for _, client := range r.Clients {
-				select {
-				case client.Send <- message:
-				default:
-					// if client buffer is full, disconnect it
-					close(client.Send)
-					delete(r.Clients, client.Id)
+		case client := <-r.unregister:
+			{
+				fmt.Printf("DELETING CLIENT: %s", client.id)
+				delete(r.clients, client.id)
+				close(client.send)
+			}
+
+		case message := <-r.send:
+			{
+				for _, client := range r.clients {
+					select {
+					case client.send <- message:
+					default:
+
+						close(client.send)
+						delete(r.clients, client.id)
+					}
 				}
 			}
+
 		}
 	}
 }
